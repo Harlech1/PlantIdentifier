@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D1BACB582D19C3360098EEB9 /* TPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D1BACB572D19C3360098EEB9 /* TPackage */; };
+		D1BACB8E2D1AFEC80098EEB9 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = D1BACB8D2D1AFEC80098EEB9 /* MarkdownUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		D1BACB432D19AB8D0098EEB9 /* PlantIdentifier.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PlantIdentifier.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1BACB582D19C3360098EEB9 /* TPackage in Frameworks */,
+				D1BACB8E2D1AFEC80098EEB9 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +85,8 @@
 			);
 			name = PlantIdentifier;
 			packageProductDependencies = (
+				D1BACB572D19C3360098EEB9 /* TPackage */,
+				D1BACB8D2D1AFEC80098EEB9 /* MarkdownUI */,
 			);
 			productName = PlantIdentifier;
 			productReference = D1BACB432D19AB8D0098EEB9 /* PlantIdentifier.app */;
@@ -107,6 +116,10 @@
 			);
 			mainGroup = D1BACB3A2D19AB8D0098EEB9;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D1BACB562D19C3360098EEB9 /* XCRemoteSwiftPackageReference "TPackage" */,
+				D1BACB8C2D1AFEC80098EEB9 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D1BACB442D19AB8D0098EEB9 /* Products */;
 			projectDirPath = "";
@@ -269,6 +282,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PlantIdentifier/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Herbi;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -299,6 +314,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PlantIdentifier/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Herbi;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -339,6 +356,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D1BACB562D19C3360098EEB9 /* XCRemoteSwiftPackageReference "TPackage" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Harlech1/TPackage.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		D1BACB8C2D1AFEC80098EEB9 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D1BACB572D19C3360098EEB9 /* TPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D1BACB562D19C3360098EEB9 /* XCRemoteSwiftPackageReference "TPackage" */;
+			productName = TPackage;
+		};
+		D1BACB8D2D1AFEC80098EEB9 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D1BACB8C2D1AFEC80098EEB9 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D1BACB3B2D19AB8D0098EEB9 /* Project object */;
 }

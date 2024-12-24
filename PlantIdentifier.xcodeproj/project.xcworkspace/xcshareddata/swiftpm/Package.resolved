@@ -1,0 +1,51 @@
+{
+  "originHash" : "74f04eb618b72307dafe2a1e79daf95b69b20aa2715e8af6174acc4fac4ca9a8",
+  "pins" : [
+    {
+      "identity" : "networkimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/NetworkImage",
+      "state" : {
+        "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
+        "version" : "6.0.1"
+      }
+    },
+    {
+      "identity" : "purchases-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RevenueCat/purchases-ios.git",
+      "state" : {
+        "revision" : "3dd291434fd63594b8ada87bca960e001b708241",
+        "version" : "5.8.0"
+      }
+    },
+    {
+      "identity" : "swift-cmark",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-cmark",
+      "state" : {
+        "revision" : "3ccff77b2dc5b96b77db3da0d68d28068593fa53",
+        "version" : "0.5.0"
+      }
+    },
+    {
+      "identity" : "swift-markdown-ui",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/swift-markdown-ui",
+      "state" : {
+        "revision" : "5f613358148239d0292c0cef674a3c2314737f9e",
+        "version" : "2.4.1"
+      }
+    },
+    {
+      "identity" : "tpackage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Harlech1/TPackage.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "10bf2ed4e504659815af52f8b704c62a6af6e497"
+      }
+    }
+  ],
+  "version" : 3
+}

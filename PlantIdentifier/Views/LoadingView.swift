@@ -9,45 +9,61 @@ struct LoadingView: View {
     @State private var error: String?
     
     var body: some View {
-        VStack(spacing: 20) {
-            if isLoading {
-                ProgressView()
-                    .scaleEffect(1.5)
-                
-                Text("Analyzing your plant...")
-                    .font(.headline)
-                
-                Text("This might take a moment")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-            } else if let error = error {
-                Text("Error: \(error)")
-                    .foregroundColor(.red)
-                
-                Button("Try Again") {
-                    dismiss()
+        ZStack(alignment: .topTrailing) {
+            // Main content
+            VStack(spacing: 20) {
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    
+                    Text("Analyzing your plant...")
+                        .font(.headline)
+                    
+                    Text("This might take a moment")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                } else if let error = error {
+                    Text("Error: \(error)")
+                        .foregroundColor(.red)
+                    
+                    Button("Try Again") {
+                        dismiss()
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                } else {
+                    ScrollView {
+                        Markdown(apiResponse)
+                            .padding()
+                    }
+                    
+                    Button("Take Another Photo") {
+                        dismiss()
+                    }
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .padding(.bottom)
                 }
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-            } else {
-                ScrollView {
-                    Markdown(apiResponse)
-                        .padding()
-                }
-                
-                Button("Take Another Photo") {
-                    dismiss()
-                }
-                .padding()
-                .background(Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-                .padding(.bottom)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, 48) // Add top padding to push content down
+            .padding() // Regular padding for other edges
+            
+            // Dismiss button
+            Button(action: {
+                dismiss()
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.gray)
+            }
+            .padding(.top, 12)
+            .padding(.trailing)
         }
-        .padding()
         .onAppear {
             if let base64Image = imageBase64 {
                 analyzeImage(base64Image: base64Image)

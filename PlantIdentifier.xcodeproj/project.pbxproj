@@ -9,10 +9,12 @@
 /* Begin PBXBuildFile section */
 		D1BACB582D19C3360098EEB9 /* TPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D1BACB572D19C3360098EEB9 /* TPackage */; };
 		D1BACB8E2D1AFEC80098EEB9 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = D1BACB8D2D1AFEC80098EEB9 /* MarkdownUI */; };
+		D1BACBE62D1C9A520098EEB9 /* PlantModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = D1BACBE42D1C9A520098EEB9 /* PlantModel.xcdatamodeld */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		D1BACB432D19AB8D0098EEB9 /* PlantIdentifier.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PlantIdentifier.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1BACBE52D1C9A520098EEB9 /* PlantModel.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = PlantModel.xcdatamodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -52,6 +54,7 @@
 		D1BACB3A2D19AB8D0098EEB9 = {
 			isa = PBXGroup;
 			children = (
+				D1BACBE42D1C9A520098EEB9 /* PlantModel.xcdatamodeld */,
 				D1BACB452D19AB8D0098EEB9 /* PlantIdentifier */,
 				D1BACB442D19AB8D0098EEB9 /* Products */,
 			);
@@ -145,6 +148,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1BACBE62D1C9A520098EEB9 /* PlantModel.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,6 +392,19 @@
 			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		D1BACBE42D1C9A520098EEB9 /* PlantModel.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				D1BACBE52D1C9A520098EEB9 /* PlantModel.xcdatamodel */,
+			);
+			currentVersion = D1BACBE52D1C9A520098EEB9 /* PlantModel.xcdatamodel */;
+			path = PlantModel.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = D1BACB3B2D19AB8D0098EEB9 /* Project object */;
 }

@@ -26,12 +26,13 @@ struct ContentView: View {
                     .cornerRadius(10)
                 }
             }
+            .navigationBarTitle("Herbi")
             .fullScreenCover(isPresented: $showingCamera) {
                 CameraView(capturedImageBase64: $capturedImageBase64, 
                           showingCamera: $showingCamera, 
                           showingLoadingScreen: $showingLoadingScreen)
             }
-            .sheet(isPresented: $showingLoadingScreen) {
+            .fullScreenCover(isPresented: $showingLoadingScreen) {
                 LoadingView(imageBase64: $capturedImageBase64)
             }
         }

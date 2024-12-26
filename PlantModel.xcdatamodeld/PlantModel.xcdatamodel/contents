@@ -3,11 +3,15 @@
     <entity name="PlantEntity" representedClassName="PlantEntity" syncable="YES" codeGenerationType="class">
         <attribute name="commonName" optional="YES" attributeType="String"/>
         <attribute name="dateAdded" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="giftTo" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="imageData" optional="YES" attributeType="Binary"/>
+        <attribute name="isPoisonous" optional="YES" attributeType="String"/>
         <attribute name="latitude" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="locationName" optional="YES" attributeType="String"/>
         <attribute name="longitude" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="scientificName" optional="YES" attributeType="String"/>
+        <attribute name="story" optional="YES" attributeType="String"/>
+        <attribute name="symbolism" optional="YES" attributeType="String"/>
     </entity>
 </model>

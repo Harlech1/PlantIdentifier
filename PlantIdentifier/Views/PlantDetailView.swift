@@ -83,13 +83,13 @@ struct PlantDetailView: View {
                             .listRowInsets(EdgeInsets())
                         Spacer()
                     }
-
+                    
                 }
             }
             .listRowBackground(Color.clear)
             
             Section("Plant Information") {
-                HStack {
+                HStack() {
                     Label {
                         Text("Common Name")
                             .foregroundColor(.secondary)
@@ -100,9 +100,11 @@ struct PlantDetailView: View {
                     Spacer()
                     Text(plant.commonName ?? "Unknown")
                         .bold()
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 
-                HStack {
+                HStack() {
                     Label {
                         Text("Scientific Name")
                             .foregroundColor(.secondary)
@@ -113,9 +115,11 @@ struct PlantDetailView: View {
                     Spacer()
                     Text(plant.scientificName ?? "Unknown")
                         .italic()
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                HStack {
+                
+                HStack() {
                     Label {
                         Text("Address")
                             .foregroundColor(.secondary)
@@ -125,6 +129,61 @@ struct PlantDetailView: View {
                     }
                     Spacer()
                     Text(plant.locationName ?? "Unknown")
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                HStack() {
+                    Label {
+                        Text("Toxicity")
+                            .foregroundColor(.secondary)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(plant.isPoisonous?.lowercased() == "yes" ? .red : .orange)
+                    }
+                    Spacer()
+                    Text(plant.isPoisonous ?? "Unknown")
+                        .foregroundColor(plant.isPoisonous?.lowercased() == "yes" ? .red : .primary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                if let symbolism = plant.symbolism {
+                    HStack() {
+                        Label {
+                            Text("Symbolism")
+                                .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: "heart.fill")
+                                .foregroundStyle(.pink)
+                        }
+                        Spacer()
+                        Text(symbolism)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                
+                if let giftTo = plant.giftTo {
+                    HStack() {
+                        Label {
+                            Text("Gift To")
+                                .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: "gift.fill")
+                                .foregroundStyle(.purple)
+                        }
+                        Spacer()
+                        Text(giftTo)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if let story = plant.story, story.lowercased() != "none" {
+                Section(header: Text("Story & Mythology")) {
+                    Text(story)
+                        .padding(8)
                 }
             }
             
@@ -149,8 +208,8 @@ struct PlantDetailView: View {
                                     )
                             }
                         }
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .frame(height: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
                 .listRowBackground(Color.clear)

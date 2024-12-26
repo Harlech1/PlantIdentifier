@@ -19,7 +19,11 @@ struct AddPlantView: View {
     @State private var showingLocationPicker = false
     @State private var selectedCoordinate: CLLocationCoordinate2D?
     let initialImageData: Data
-    
+    @State private var isPoisonous: String = ""
+    @State private var symbolism = ""
+    @State private var giftTo = ""
+    @State private var story = ""
+
     private func savePlant() {
         let newPlant = PlantEntity(context: viewContext)
         newPlant.id = UUID()
@@ -27,13 +31,17 @@ struct AddPlantView: View {
         newPlant.scientificName = scientificName
         newPlant.imageData = initialImageData
         newPlant.dateAdded = Date()
-        
+        newPlant.isPoisonous = isPoisonous
+        newPlant.symbolism = symbolism
+        newPlant.giftTo = giftTo
+        newPlant.story = story
+
         if let coordinate = selectedCoordinate {
             newPlant.latitude = coordinate.latitude
             newPlant.longitude = coordinate.longitude
             newPlant.locationName = locationName
         }
-        
+
         do {
             try viewContext.save()
             dismiss()
@@ -41,7 +49,7 @@ struct AddPlantView: View {
             print("Error saving plant: \(error)")
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -73,10 +81,10 @@ struct AddPlantView: View {
                         }
                     }
                 }
-                
+
                 if !commonName.isEmpty {
                     Section("Plant Information") {
-                        HStack {
+                        HStack() {
                             Label {
                                 Text("Common Name")
                                     .foregroundColor(.secondary)
@@ -87,9 +95,11 @@ struct AddPlantView: View {
                             Spacer()
                             Text(commonName)
                                 .bold()
+                                .multilineTextAlignment(.trailing)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        
-                        HStack {
+
+                        HStack() {
                             Label {
                                 Text("Scientific Name")
                                     .foregroundColor(.secondary)
@@ -100,8 +110,25 @@ struct AddPlantView: View {
                             Spacer()
                             Text(scientificName)
                                 .italic()
+                                .multilineTextAlignment(.trailing)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        
+
+                        HStack() {
+                            Label {
+                                Text("Toxicity")
+                                    .foregroundColor(.secondary)
+                            } icon: {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(isPoisonous.lowercased() == "yes" ? .red : .gray)
+                            }
+                            Spacer()
+                            Text(isPoisonous.isEmpty ? "Unknown" : isPoisonous)
+                                .foregroundColor(isPoisonous.lowercased() == "yes" ? .red : .primary)
+                                .multilineTextAlignment(.trailing)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
                         Button(action: {
                             showingLocationPicker = true
                         }) {
@@ -116,10 +143,12 @@ struct AddPlantView: View {
                                 Spacer()
                                 Text(locationName.isEmpty ? "Select Location" : locationName)
                                     .foregroundColor(locationName.isEmpty ? .blue : .primary)
+                                    .multilineTextAlignment(.trailing)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        
-                        HStack {
+
+                        HStack() {
                             Label {
                                 Text("Added")
                                     .foregroundColor(.secondary)
@@ -129,6 +158,47 @@ struct AddPlantView: View {
                             }
                             Spacer()
                             Text(Date().formatted(date: .abbreviated, time: .shortened))
+                                .multilineTextAlignment(.trailing)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        if !symbolism.isEmpty {
+                            HStack() {
+                                Label {
+                                    Text("Symbolism")
+                                        .foregroundColor(.secondary)
+                                } icon: {
+                                    Image(systemName: "heart.fill")
+                                        .foregroundStyle(.pink)
+                                }
+                                Spacer()
+                                Text(symbolism)
+                                    .multilineTextAlignment(.trailing)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        if !giftTo.isEmpty {
+                            HStack() {
+                                Label {
+                                    Text("Gift To")
+                                        .foregroundColor(.secondary)
+                                } icon: {
+                                    Image(systemName: "gift.fill")
+                                        .foregroundStyle(.purple)
+                                }
+                                Spacer()
+                                Text(giftTo)
+                                    .multilineTextAlignment(.trailing)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    if !story.isEmpty && story.lowercased() != "none" {
+                        Section(header: Text("Story & Mythology")) {
+                            Text(story)
+                                .padding(8)
+
                         }
                     }
                 }
@@ -141,7 +211,7 @@ struct AddPlantView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         savePlant()
@@ -169,7 +239,6 @@ struct AddPlantView: View {
         let endpoint = "https://api.openai.com/v1/chat/completions"
 
         let base64Image = imageData.base64EncodedString()
-
         let payload: [String: Any] = [
             "model": "gpt-4o",
             "messages": [
@@ -178,7 +247,16 @@ struct AddPlantView: View {
                     "content": [
                         [
                             "type": "text",
-                            "text": "What is this plant? Please provide ONLY the common name and scientific name in this format: 'common_name: NAME\nscientific_name: NAME'. Do not include any other text."
+                            "text": """
+                            Identify this plant and provide ONLY the following information in this exact format:
+                            common_name: NAME
+                            scientific_name: FULL NAME (Genus and species, e.g., Myosotis sylvatica; include both parts)
+                            poisonous: YES/NO/UNKNOWN (If toxic to humans or pets)
+                            symbolism: TWO OR THREE WORDS MAX (e.g., peace, love, resilience; represents the core idea or emotion associated with the plant)
+                            gift_to: TWO OR THREE WORDS MAX (e.g., close friends, lovers; describes two types of ideal recipients for gifting this plant)
+                            story: A BRIEF INTERESTING STORY OR MYTH ABOUT THIS PLANT (if none, write NONE)
+                            Ensure that only "symbolism" and "gift_to" are limited to two or three words, and "story" can be a full sentence or more. Do not include any additional text.
+                            """
                         ],
                         [
                             "type": "image_url",
@@ -189,7 +267,7 @@ struct AddPlantView: View {
                     ]
                 ]
             ],
-            "max_tokens": 100
+            "max_tokens": 300
         ]
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else {
@@ -218,6 +296,14 @@ struct AddPlantView: View {
                         commonName = line.replacingOccurrences(of: "common_name:", with: "").trimmingCharacters(in: .whitespaces)
                     } else if line.lowercased().starts(with: "scientific_name:") {
                         scientificName = line.replacingOccurrences(of: "scientific_name:", with: "").trimmingCharacters(in: .whitespaces)
+                    } else if line.lowercased().starts(with: "poisonous:") {
+                        isPoisonous = line.replacingOccurrences(of: "poisonous:", with: "").trimmingCharacters(in: .whitespaces)
+                    } else if line.lowercased().starts(with: "symbolism:") {
+                        symbolism = line.replacingOccurrences(of: "symbolism:", with: "").trimmingCharacters(in: .whitespaces)
+                    } else if line.lowercased().starts(with: "gift_to:") {
+                        giftTo = line.replacingOccurrences(of: "gift_to:", with: "").trimmingCharacters(in: .whitespaces)
+                    } else if line.lowercased().starts(with: "story:") {
+                        story = line.replacingOccurrences(of: "story:", with: "").trimmingCharacters(in: .whitespaces)
                     }
                 }
             }
@@ -243,7 +329,7 @@ struct LocationPickerView: View {
     @State private var hasInitialLocation = false
     @State private var isDragging = false
     @State private var debounceTimer: Timer?
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -254,7 +340,7 @@ struct LocationPickerView: View {
                         .onChange(of: searchText) { _ in
                             searchLocations()
                         }
-                    
+
                     if !searchResults.isEmpty {
                         List(searchResults, id: \.self) { item in
                             Button {
@@ -285,7 +371,7 @@ struct LocationPickerView: View {
                             }
                     }
                 }
-                
+
                 // Center Pin
                 if searchResults.isEmpty {
                     VStack {
@@ -293,13 +379,13 @@ struct LocationPickerView: View {
                             .font(.title)
                             .foregroundColor(.red)
                             .opacity(isDragging ? 0.5 : 1.0)
-                        
+
                         Circle()
                             .fill(.red)
                             .frame(width: 5, height: 5)
                             .shadow(radius: 2)
                     }
-                    
+
                     VStack {
                         Spacer()
                         if !locationName.isEmpty {
@@ -342,7 +428,7 @@ struct LocationPickerView: View {
             }
         }
     }
-    
+
     private func selectLocation(_ item: MKMapItem) {
         selectedCoordinate = item.placemark.coordinate
         let address = [
@@ -356,11 +442,11 @@ struct LocationPickerView: View {
         searchResults.removeAll()
         searchText = ""
     }
-    
+
     private func reverseGeocode(_ coordinate: CLLocationCoordinate2D) {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         let geocoder = CLGeocoder()
-        
+
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             if let placemark = placemarks?.first {
                 selectedCoordinate = coordinate
@@ -374,12 +460,12 @@ struct LocationPickerView: View {
             }
         }
     }
-    
+
     private func searchLocations() {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = searchText
         request.region = region
-        
+
         MKLocalSearch(request: request).start { response, error in
             guard let response = response else { return }
             searchResults = response.mapItems
@@ -391,23 +477,23 @@ struct LocationPickerView: View {
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     @Published var location: CLLocation?
-    
+
     override init() {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
     }
-    
+
     func startUpdatingLocation() {
         locationManager.startUpdatingLocation()
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.first else { return }
         self.location = location
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         if status == .authorizedWhenInUse {
             locationManager.startUpdatingLocation()

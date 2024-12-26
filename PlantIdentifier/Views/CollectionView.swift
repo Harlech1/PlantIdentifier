@@ -31,6 +31,7 @@ struct Plant: Identifiable, Codable {
 struct CollectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var searchText = ""
+    @State private var selectedPlant: PlantEntity?
     
     // Update FetchRequest to include the search filter
     var plantRequest: FetchRequest<PlantEntity>
@@ -38,7 +39,11 @@ struct CollectionView: View {
     
     init() {
         let request: NSFetchRequest<PlantEntity> = PlantEntity.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \PlantEntity.commonName, ascending: true)]
+        // Sort by date in descending order (newest first), then by common name
+        request.sortDescriptors = [
+            NSSortDescriptor(keyPath: \PlantEntity.dateAdded, ascending: false),
+            NSSortDescriptor(keyPath: \PlantEntity.commonName, ascending: true)
+        ]
         self.plantRequest = FetchRequest(fetchRequest: request)
     }
     
@@ -61,34 +66,43 @@ struct CollectionView: View {
     
     let columns = [GridItem(.flexible())]
     
+    // Add delete function
+    private func deletePlant(_ plant: PlantEntity) {
+        viewContext.delete(plant)
+        
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting plant: \(error)")
+        }
+    }
+    
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(filteredPlants) { plant in
-                        PlantCard(plant: plant)
-                    }
+            List {
+                ForEach(filteredPlants) { plant in
+                    PlantCard(plant: plant)
+                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .onTapGesture {
+                            selectedPlant = plant
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                deletePlant(plant)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                 }
-                .padding()
+                .listRowSeparator(.hidden)
             }
+            .listStyle(.plain)
             .scrollDismissesKeyboard(.interactively)
-            
-            Button(action: {
-                showingAddSheet = true
-            }) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Plant")
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.green)
-                .cornerRadius(10)
-            }
-            .padding()
             .navigationTitle("Garden")
+            .navigationDestination(item: $selectedPlant) { plant in
+                PlantDetailView(plant: plant)
+            }
             .sheet(isPresented: $showingAddSheet) {
                 NavigationStack {
                     VStack(spacing: 20) {
@@ -129,6 +143,20 @@ struct CollectionView: View {
                     .navigationBarTitleDisplayMode(.inline)
                 }
                 .presentationDetents([.height(150)])
+            }
+            .toolbar() {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: {
+                        showingAddSheet = true
+                    }) {
+                        HStack {
+                            Image(systemName: "plus")
+                            Text("Add Plant")
+                        }
+                        .foregroundStyle(.green)
+                    }
+                    .padding()
+                }
             }
             .onChange(of: showingCamera) { isShowing in
                 if isShowing {
@@ -174,6 +202,9 @@ struct CollectionView: View {
                 }
             }
         }
+        .refreshable {
+            print("hi")
+        }
         .searchable(
             text: $searchText,
             prompt: "Search plants..."
@@ -192,7 +223,8 @@ struct PlantCard: View {
                     .resizable()
                     .scaledToFill()
                     .frame(width: 120, height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.leading, 12)
             }
             
             VStack(alignment: .leading, spacing: 4) {
@@ -217,13 +249,15 @@ struct PlantCard: View {
                     }
                 }
             }
+            .padding(.horizontal, 12)
             .padding(.vertical, 12)
 
             Spacer()
         }
         .background(Color.gray.opacity(0.1))
-        .cornerRadius(10)
+        .cornerRadius(16)
         .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
     }
 }
 

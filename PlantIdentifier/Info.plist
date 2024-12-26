@@ -6,5 +6,7 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to identify plants</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to help record where you found this plant.</string>
 </dict>
 </plist>

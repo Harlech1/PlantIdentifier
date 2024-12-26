@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import CoreLocation
+import MapKit
 
 struct AddPlantView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -13,8 +15,11 @@ struct AddPlantView: View {
     @State private var isAnalyzing = false
     @State private var commonName = ""
     @State private var scientificName = ""
+    @State private var locationName = ""
+    @State private var showingLocationPicker = false
+    @State private var selectedCoordinate: CLLocationCoordinate2D?
     let initialImageData: Data
-
+    
     private func savePlant() {
         let newPlant = PlantEntity(context: viewContext)
         newPlant.id = UUID()
@@ -23,6 +28,12 @@ struct AddPlantView: View {
         newPlant.imageData = initialImageData
         newPlant.dateAdded = Date()
         
+        if let coordinate = selectedCoordinate {
+            newPlant.latitude = coordinate.latitude
+            newPlant.longitude = coordinate.longitude
+            newPlant.locationName = locationName
+        }
+        
         do {
             try viewContext.save()
             dismiss()
@@ -30,61 +41,99 @@ struct AddPlantView: View {
             print("Error saving plant: \(error)")
         }
     }
-
+    
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
+            List {
+                // Image Section
+                Section {
                     if let uiImage = UIImage(data: initialImageData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 300)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(radius: 5)
+                        HStack {
+                            Spacer()
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxHeight: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .listRowInsets(EdgeInsets())
+                            Spacer()
+                        }
                     }
+                }
+                .listRowBackground(Color.clear)
 
-                    if isAnalyzing {
-                        VStack(spacing: 12) {
+                if isAnalyzing {
+                    Section {
+                        HStack {
                             ProgressView()
                                 .scaleEffect(1.2)
                             Text("Analyzing plant...")
                                 .foregroundColor(.secondary)
+                                .padding(.leading)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(12)
-                    } else if !commonName.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Plant Information")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text("Common Name:")
-                                        .foregroundColor(.secondary)
-                                    Text(commonName)
-                                        .bold()
-                                }
-
-                                HStack {
-                                    Text("Scientific Name:")
-                                        .foregroundColor(.secondary)
-                                    Text(scientificName)
-                                        .italic()
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(12)
                     }
                 }
-                .padding()
+                
+                if !commonName.isEmpty {
+                    Section("Plant Information") {
+                        HStack {
+                            Label {
+                                Text("Common Name")
+                                    .foregroundColor(.secondary)
+                            } icon: {
+                                Image(systemName: "leaf.fill")
+                                    .foregroundStyle(.green)
+                            }
+                            Spacer()
+                            Text(commonName)
+                                .bold()
+                        }
+                        
+                        HStack {
+                            Label {
+                                Text("Scientific Name")
+                                    .foregroundColor(.secondary)
+                            } icon: {
+                                Image(systemName: "text.book.closed.fill")
+                                    .foregroundStyle(.brown)
+                            }
+                            Spacer()
+                            Text(scientificName)
+                                .italic()
+                        }
+                        
+                        Button(action: {
+                            showingLocationPicker = true
+                        }) {
+                            HStack {
+                                Label {
+                                    Text("Location")
+                                        .foregroundColor(.secondary)
+                                } icon: {
+                                    Image(systemName: "location.fill")
+                                        .foregroundStyle(.red)
+                                }
+                                Spacer()
+                                Text(locationName.isEmpty ? "Select Location" : locationName)
+                                    .foregroundColor(locationName.isEmpty ? .blue : .primary)
+                            }
+                        }
+                        
+                        HStack {
+                            Label {
+                                Text("Added")
+                                    .foregroundColor(.secondary)
+                            } icon: {
+                                Image(systemName: "calendar")
+                                    .foregroundStyle(.blue)
+                            }
+                            Spacer()
+                            Text(Date().formatted(date: .abbreviated, time: .shortened))
+                        }
+                    }
+                }
             }
+            .listStyle(.insetGrouped)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -92,7 +141,7 @@ struct AddPlantView: View {
                         dismiss()
                     }
                 }
-
+                
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         savePlant()
@@ -100,7 +149,12 @@ struct AddPlantView: View {
                     .disabled(commonName.isEmpty)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .sheet(isPresented: $showingLocationPicker) {
+                LocationPickerView(
+                    locationName: $locationName,
+                    selectedCoordinate: $selectedCoordinate
+                )
+            }
         }
         .onAppear {
             Task {
@@ -172,5 +226,191 @@ struct AddPlantView: View {
         }
 
         isAnalyzing = false
+    }
+}
+
+struct LocationPickerView: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var locationName: String
+    @Binding var selectedCoordinate: CLLocationCoordinate2D?
+    @StateObject private var locationManager = LocationManager()
+    @State private var searchText = ""
+    @State private var searchResults: [MKMapItem] = []
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
+    @State private var hasInitialLocation = false
+    @State private var isDragging = false
+    @State private var debounceTimer: Timer?
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                VStack(spacing: 0) {
+                    TextField("Search location", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .padding()
+                        .onChange(of: searchText) { _ in
+                            searchLocations()
+                        }
+                    
+                    if !searchResults.isEmpty {
+                        List(searchResults, id: \.self) { item in
+                            Button {
+                                selectLocation(item)
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(item.name ?? "")
+                                        .foregroundColor(.primary)
+                                    if let address = item.placemark.title {
+                                        Text(address)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Map(coordinateRegion: $region, showsUserLocation: true)
+                            .onChange(of: region.center.latitude) { _ in
+                                isDragging = true
+                                // Cancel previous timer if it exists
+                                debounceTimer?.invalidate()
+                                // Create new timer
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+                                    isDragging = false
+                                    reverseGeocode(region.center)
+                                }
+                            }
+                    }
+                }
+                
+                // Center Pin
+                if searchResults.isEmpty {
+                    VStack {
+                        Image(systemName: "mappin")
+                            .font(.title)
+                            .foregroundColor(.red)
+                            .opacity(isDragging ? 0.5 : 1.0)
+                        
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 5, height: 5)
+                            .shadow(radius: 2)
+                    }
+                    
+                    VStack {
+                        Spacer()
+                        if !locationName.isEmpty {
+                            Text(isDragging ? "Moving..." : locationName)
+                                .font(.caption)
+                                .padding(8)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(8)
+                                .padding(.bottom, 20)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Choose Location")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        selectedCoordinate = region.center
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                locationManager.startUpdatingLocation()
+            }
+            .onChange(of: locationManager.location) { newLocation in
+                if let location = newLocation, !hasInitialLocation {
+                    region = MKCoordinateRegion(
+                        center: location.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    )
+                    hasInitialLocation = true
+                }
+            }
+        }
+    }
+    
+    private func selectLocation(_ item: MKMapItem) {
+        selectedCoordinate = item.placemark.coordinate
+        let address = [
+            item.placemark.thoroughfare,
+            item.placemark.locality,
+            item.placemark.administrativeArea,
+            item.placemark.country
+        ].compactMap { $0 }.joined(separator: ", ")
+        locationName = address
+        region.center = item.placemark.coordinate
+        searchResults.removeAll()
+        searchText = ""
+    }
+    
+    private func reverseGeocode(_ coordinate: CLLocationCoordinate2D) {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let geocoder = CLGeocoder()
+        
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let placemark = placemarks?.first {
+                selectedCoordinate = coordinate
+                let address = [
+                    placemark.thoroughfare,
+                    placemark.locality,
+                    placemark.administrativeArea,
+                    placemark.country
+                ].compactMap { $0 }.joined(separator: ", ")
+                locationName = address
+            }
+        }
+    }
+    
+    private func searchLocations() {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = searchText
+        request.region = region
+        
+        MKLocalSearch(request: request).start { response, error in
+            guard let response = response else { return }
+            searchResults = response.mapItems
+        }
+    }
+}
+
+// Add this class to manage location
+class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    private let locationManager = CLLocationManager()
+    @Published var location: CLLocation?
+    
+    override init() {
+        super.init()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.requestWhenInUseAuthorization()
+    }
+    
+    func startUpdatingLocation() {
+        locationManager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.first else { return }
+        self.location = location
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == .authorizedWhenInUse {
+            locationManager.startUpdatingLocation()
+        }
     }
 }

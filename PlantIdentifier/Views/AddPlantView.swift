@@ -24,7 +24,7 @@ struct AddPlantView: View {
     @State private var giftTo = ""
     @State private var story = ""
     @State private var bloomingPeriod = ""
-    @State private var hemisphere = ""
+    @State private var nativeRegion = ""
     @StateObject private var locationManager = LocationManager()
     @State private var currentLocationName: String = ""
     @State private var identificationFailed = false
@@ -41,7 +41,7 @@ struct AddPlantView: View {
         newPlant.giftTo = giftTo
         newPlant.story = story
         newPlant.bloomingPeriod = bloomingPeriod
-        newPlant.hemisphere = hemisphere
+        newPlant.nativeRegion = nativeRegion
 
         if let coordinate = selectedCoordinate {
             newPlant.latitude = coordinate.latitude
@@ -229,7 +229,7 @@ struct AddPlantView: View {
                                     }
                                 }
 
-                                if !hemisphere.isEmpty {
+                                if !nativeRegion.isEmpty {
                                     HStack {
                                         Label {
                                             Text("Native Region")
@@ -239,7 +239,7 @@ struct AddPlantView: View {
                                                 .foregroundStyle(.blue)
                                         }
                                         Spacer()
-                                        Text(hemisphere)
+                                        Text(nativeRegion)
                                             .multilineTextAlignment(.trailing)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
@@ -330,11 +330,11 @@ struct AddPlantView: View {
                             scientific_name: FULL NAME (Genus and species, e.g., Myosotis sylvatica; include both parts)
                             poisonous: YES/NO/UNKNOWN (If toxic to humans or pets)
                             blooming_period: SEASON/MONTHS (e.g., Spring-Summer or March-July)
-                            hemisphere: North/South/Both (Where this plant naturally blooms)
+                            native_region: REGIONS (e.g., Mediterranean Basin, Eastern Asia, North America)
                             symbolism: TWO OR THREE WORDS MAX (e.g., peace, love, resilience)
                             gift_to: TWO OR THREE WORDS MAX (e.g., close friends, lovers)
                             story: A BRIEF INTERESTING STORY OR MYTH ABOUT THIS PLANT (if none, write NONE)
-                            Ensure that only "symbolism" and "gift_to" are limited to two or three words, and "story" can be a full sentence or more. Do not include any additional text.
+                            Ensure that only "symbolism" and "gift_to" are limited to two or three words, and "story" can be a full sentence or more. For native_region, list the main geographical regions where this plant naturally occurs. Do not include any additional text.
                             """
                         ],
                         [
@@ -386,8 +386,8 @@ struct AddPlantView: View {
                             isPoisonous = line.replacingOccurrences(of: "poisonous:", with: "").trimmingCharacters(in: .whitespaces)
                         } else if line.lowercased().starts(with: "blooming_period:") {
                             bloomingPeriod = line.replacingOccurrences(of: "blooming_period:", with: "").trimmingCharacters(in: .whitespaces)
-                        } else if line.lowercased().starts(with: "hemisphere:") {
-                            hemisphere = line.replacingOccurrences(of: "hemisphere:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "native_region:") {
+                            nativeRegion = line.replacingOccurrences(of: "native_region:", with: "").trimmingCharacters(in: .whitespaces)
                         } else if line.lowercased().starts(with: "symbolism:") {
                             symbolism = line.replacingOccurrences(of: "symbolism:", with: "").trimmingCharacters(in: .whitespaces)
                         } else if line.lowercased().starts(with: "gift_to:") {

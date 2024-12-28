@@ -10,6 +10,7 @@ struct PlantDetailView: View {
     @State private var isFavorite: Bool
     @Environment(\.dismiss) var dismiss
     @State private var showingDeleteAlert = false
+    @State private var showingWateringSheet = false
     
     private var mapsURL: URL? {
         let latitude = plant.latitude
@@ -82,28 +83,13 @@ struct PlantDetailView: View {
     
     var body: some View {
         List {
-//            Section {
-//                if let imageData = plant.imageData,
-//                   let uiImage = UIImage(data: imageData) {
-//                    GeometryReader { geometry in
-//                        Image(uiImage: uiImage)
-//                            .resizable()
-//                            .scaledToFill()
-//                            .frame(width: geometry.size.width, height: 200)
-//                            .clipShape(RoundedRectangle(cornerRadius: 16))
-//                            .overlay(
-//                                RoundedRectangle(cornerRadius: 16)
-//                                    .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-//                            )
-//                            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-//                    }
-//                    .frame(height: 200)
-//                    .listRowInsets(EdgeInsets())
-//                }
-//            }
-//            .listRowBackground(Color.clear)
-            
-            Section("Plant Information") {
+            Section(header: HStack {
+                Image(systemName: "laurel.leading")
+                    .symbolRenderingMode(.multicolor)
+                Text("Plant Information")
+                Image(systemName: "laurel.trailing")
+                    .symbolRenderingMode(.multicolor)
+            }) {
                 HStack() {
                     Label {
                         Text("Common Name")
@@ -211,7 +197,7 @@ struct PlantDetailView: View {
                     }
                 }
 
-                if let hemisphere = plant.hemisphere {
+                if let nativeRegion = plant.nativeRegion {
                     HStack {
                         Label {
                             Text("Native Region")
@@ -221,14 +207,60 @@ struct PlantDetailView: View {
                                 .foregroundStyle(.blue)
                         }
                         Spacer()
-                        Text(hemisphere)
+                        Text(nativeRegion)
                             .multilineTextAlignment(.trailing)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
+
+            Section(header: HStack {
+                Image(systemName: "stethoscope")
+                    .symbolRenderingMode(.multicolor)
+                Text("Care")
+            }) {
+                HStack {
+                    Label {
+                        Text("Last Watered")
+                            .foregroundColor(.secondary)
+                    } icon: {
+                        Image(systemName: "drop.fill")
+                            .foregroundStyle(.blue)
+                    }
+                    Spacer()
+                    Text(plant.lastWatered?.formatted(date: .abbreviated, time: .omitted) ?? "Not set")
+                        .foregroundStyle(plant.lastWatered == nil ? .secondary : .primary)
+                }
+
+                if plant.waterReminder {
+                    HStack {
+                        Label {
+                            Text("Next Watering")
+                            .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: "calendar.badge.clock")
+                                .foregroundStyle(.blue)
+                        }
+                        Spacer()
+                        if let nextWatering = plant.lastWatered?.addingTimeInterval(Double(plant.wateringInterval) * 24 * 60 * 60) {
+                            Text(nextWatering.formatted(date: .abbreviated, time: .omitted))
+                        }
+                    }
+                }
+
+                Button {
+                    showingWateringSheet = true
+                } label: {
+                    Label("Set Watering Schedule", systemImage: "timer")
+                }
+            }
+
             if let story = plant.story, story.lowercased() != "none" {
-                Section(header: Text("Story & Mythology"), footer: Text("Herbi can make mistakes. Verify important information.")) {
+                Section(header: HStack {
+                    Image(systemName: "book.pages")
+                        .symbolRenderingMode(.hierarchical)
+                    Text("Story & Mythology")
+                }, footer: Text("Herbi can make mistakes. Verify important information.")) {
                     Text(story)
                         .padding(4)
                 }
@@ -249,6 +281,8 @@ struct PlantDetailView: View {
                     }
                 }
             }
+            
+
         }
         .listStyle(.insetGrouped)
         .navigationBarTitleDisplayMode(.inline)
@@ -300,7 +334,7 @@ struct PlantDetailView: View {
                             Label("Delete Plant", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "ellipsis.circle.fill")
                             .foregroundStyle(.primary)
                     }
                 }
@@ -321,6 +355,9 @@ struct PlantDetailView: View {
             NavigationStack {
                 MapDetailView(plant: plant)
             }
+        }
+        .sheet(isPresented: $showingWateringSheet) {
+            WateringScheduleView(plant: plant)
         }
     }
 }
@@ -350,6 +387,104 @@ struct MapDetailView: View {
                     dismiss()
                 }
             }
+        }
+    }
+}
+
+struct WateringScheduleView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.dismiss) var dismiss
+    let plant: PlantEntity
+    
+    @State private var waterReminder: Bool
+    @State private var wateringInterval: Int
+    @State private var lastWatered: Date
+    
+    init(plant: PlantEntity) {
+        self.plant = plant
+        _waterReminder = State(initialValue: plant.waterReminder)
+        _wateringInterval = State(initialValue: max(Int(plant.wateringInterval), 1))
+        _lastWatered = State(initialValue: plant.lastWatered ?? Date())
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Toggle("Enable Watering Reminders", isOn: $waterReminder)
+                
+                if waterReminder {
+                    Stepper(
+                        "Water every \(wateringInterval) day\(wateringInterval == 1 ? "" : "s")", 
+                        value: $wateringInterval,
+                        in: 1...30,
+                        step: 1
+                    )
+                    
+                    DatePicker(
+                        "Last Watered",
+                        selection: $lastWatered,
+                        displayedComponents: .date
+                    )
+                }
+            }
+            .navigationTitle("Watering Schedule")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveWateringSchedule()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+    
+    private func saveWateringSchedule() {
+        plant.waterReminder = waterReminder
+        plant.wateringInterval = Int16(wateringInterval)
+        plant.lastWatered = lastWatered
+        
+        if waterReminder {
+            scheduleWateringNotification()
+        } else {
+            cancelWateringNotification()
+        }
+        
+        try? viewContext.save()
+        dismiss()
+    }
+    
+    private func scheduleWateringNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Time to Water Your \(plant.commonName ?? "Plant")!"
+        content.body = "Your plant needs watering today."
+        content.sound = .default
+        
+        let nextWatering = lastWatered.addingTimeInterval(Double(wateringInterval) * 24 * 60 * 60)
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: nextWatering)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        
+        let request = UNNotificationRequest(
+            identifier: "water-reminder-\(plant.id?.uuidString ?? UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    private func cancelWateringNotification() {
+        if let id = plant.id?.uuidString {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(
+                withIdentifiers: ["water-reminder-\(id)"]
+            )
         }
     }
 }

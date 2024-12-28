@@ -15,6 +15,13 @@ struct PlantIdentifierApp: App {
     
     init() {
         TPackage.configure(withAPIKey: "appl_FVBGRgjvZaBXCZZgNduXIxsSWFR", entitlementIdentifier: "Premium")
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if granted {
+                print("Notification permission granted")
+            } else if let error = error {
+                print("Error requesting notification permission: \(error)")
+            }
+        }
     }
     
     var body: some Scene {

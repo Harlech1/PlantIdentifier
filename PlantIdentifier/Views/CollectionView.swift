@@ -28,6 +28,24 @@ struct Plant: Identifiable, Codable {
     }
 }
 
+// Add this extension for image processing
+extension UIImage {
+    func compressed(quality: CGFloat = 0.5, maxWidth: CGFloat = 1024) -> Data? {
+        let scale = maxWidth / self.size.width
+        let newHeight = self.size.height * scale
+        let newWidth = self.size.width * scale
+        let newSize = CGSize(width: newWidth, height: newHeight)
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1)
+        defer { UIGraphicsEndImageContext() }
+        
+        self.draw(in: CGRect(origin: .zero, size: newSize))
+        guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext() else { return nil }
+        
+        return resizedImage.jpegData(compressionQuality: quality)
+    }
+}
+
 struct CollectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var searchText = ""
@@ -227,7 +245,7 @@ struct CollectionView: View {
                             if let newValue = newValue,
                                let imageData = Data(base64Encoded: newValue),
                                let uiImage = UIImage(data: imageData),
-                               let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
+                               let compressedData = uiImage.compressed() {
                                 selectedImageData = compressedData
                                 showingCamera = false
                                 showingImagePicker = true
@@ -243,7 +261,7 @@ struct CollectionView: View {
                     Task {
                         if let data = try? await item.loadTransferable(type: Data.self),
                            let uiImage = UIImage(data: data),
-                           let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
+                           let compressedData = uiImage.compressed() {
                             selectedImageData = compressedData
                             selectedItem = nil
                             showingAddSheet = false

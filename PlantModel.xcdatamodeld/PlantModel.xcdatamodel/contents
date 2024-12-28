@@ -5,16 +5,19 @@
         <attribute name="commonName" optional="YES" attributeType="String"/>
         <attribute name="dateAdded" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="giftTo" optional="YES" attributeType="String"/>
-        <attribute name="hemisphere" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="imageData" optional="YES" attributeType="Binary"/>
         <attribute name="isFavorite" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="isPoisonous" optional="YES" attributeType="String"/>
+        <attribute name="lastWatered" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="latitude" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="locationName" optional="YES" attributeType="String"/>
         <attribute name="longitude" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="nativeRegion" optional="YES" attributeType="String"/>
         <attribute name="scientificName" optional="YES" attributeType="String"/>
         <attribute name="story" optional="YES" attributeType="String"/>
         <attribute name="symbolism" optional="YES" attributeType="String"/>
+        <attribute name="wateringInterval" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="waterReminder" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
     </entity>
 </model>

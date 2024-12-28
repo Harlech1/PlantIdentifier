@@ -14,13 +14,13 @@ struct Plant: Identifiable, Codable {
     let commonName: String
     let scientificName: String
     let imageData: Data
-    
+
     init(id: UUID = UUID(), commonName: String, scientificName: String, imageData: Data) {
         self.id = id
         self.commonName = commonName
         self.scientificName = scientificName
         if let uiImage = UIImage(data: imageData),
-           let compressedData = uiImage.jpegData(compressionQuality: 0.3) {
+           let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
             self.imageData = compressedData
         } else {
             self.imageData = imageData
@@ -31,77 +31,147 @@ struct Plant: Identifiable, Codable {
 struct CollectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var searchText = ""
+    @State private var showFavoritesOnly = false
+    @State private var sunBounce = false
     @State private var selectedPlant: PlantEntity?
-    
-    // Update FetchRequest to include the search filter
+
     var plantRequest: FetchRequest<PlantEntity>
     private var plants: FetchedResults<PlantEntity> { plantRequest.wrappedValue }
-    
+
     init() {
         let request: NSFetchRequest<PlantEntity> = PlantEntity.fetchRequest()
-        // Sort by date in descending order (newest first), then by common name
         request.sortDescriptors = [
             NSSortDescriptor(keyPath: \PlantEntity.dateAdded, ascending: false),
             NSSortDescriptor(keyPath: \PlantEntity.commonName, ascending: true)
         ]
         self.plantRequest = FetchRequest(fetchRequest: request)
     }
-    
-    // Filtered plants based on search text
+
     private var filteredPlants: [PlantEntity] {
-        if searchText.isEmpty {
-            return Array(plants)
+        let filtered = plants.filter { plant in
+            let matchesSearch = searchText.isEmpty ||
+            (plant.commonName ?? "").localizedCaseInsensitiveContains(searchText) ||
+            (plant.scientificName ?? "").localizedCaseInsensitiveContains(searchText)
+            return matchesSearch && (!showFavoritesOnly || plant.isFavorite)
         }
-        return plants.filter {
-            ($0.commonName ?? "").localizedCaseInsensitiveContains(searchText) ||
-            ($0.scientificName ?? "").localizedCaseInsensitiveContains(searchText)
+
+        if showFavoritesOnly {
+            return filtered.sorted { $0.dateAdded ?? Date() > $1.dateAdded ?? Date() }
+        } else {
+            return filtered
         }
     }
-    
+
     @State private var showingAddSheet = false
     @State private var showingImagePicker = false
     @State private var showingCamera = false
     @State private var selectedImageData: Data?
     @State private var selectedItem: PhotosPickerItem?
-    
+
     let columns = [GridItem(.flexible())]
-    
-    // Add delete function
+
     private func deletePlant(_ plant: PlantEntity) {
         viewContext.delete(plant)
-        
+
         do {
             try viewContext.save()
         } catch {
             print("Error deleting plant: \(error)")
         }
     }
-    
+
+    @State private var isBouncingRainbow = false
+    @State private var isBouncingRain = false
+    @State private var rainbowTimer: Timer?
+    @State private var rainTimer: Timer?
+
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(filteredPlants) { plant in
-                    PlantCard(plant: plant)
-                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                        .listRowBackground(Color.clear)
-                        .onTapGesture {
-                            selectedPlant = plant
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                deletePlant(plant)
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+            Group {
+                if filteredPlants.isEmpty {
+                    if searchText.isEmpty && !showFavoritesOnly {
+                        ContentUnavailableView(
+                            "Your Garden Awaits",
+                            systemImage: "rainbow",
+                            description: Text("Plant your first memory by adding a new discovery to your garden.")
+                        )
+                        .symbolRenderingMode(.multicolor)
+                        .symbolEffect(.bounce, value: isBouncingRainbow)
+                        .onAppear {
+                            rainbowTimer?.invalidate()
+                            rainbowTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+                                isBouncingRainbow.toggle()
                             }
                         }
+                        .onDisappear {
+                            rainbowTimer?.invalidate()
+                            rainbowTimer = nil
+                        }
+                    } else {
+                        ContentUnavailableView(
+                            "No Plants Found",
+                            systemImage: "cloud.rain.fill",
+                            description: Text(showFavoritesOnly ?
+                                "Your garden of favorites is waiting to bloom." :
+                                "Let's explore a different path in your garden."
+                            )
+                        )
+                        .symbolEffect(.bounce, value: isBouncingRain)
+                        .onAppear {
+                            rainTimer?.invalidate()
+                            rainTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+                                isBouncingRain.toggle()
+                            }
+                        }
+                        .onDisappear {
+                            rainTimer?.invalidate()
+                            rainTimer = nil
+                        }
+                    }
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 20) {
+                            ForEach(filteredPlants) { plant in
+                                PlantCard(plant: plant)
+                                    .onTapGesture {
+                                        selectedPlant = plant
+                                    }
+                            }
+                        }
+                        .padding(.vertical, 12)
+                    }
                 }
-                .listRowSeparator(.hidden)
             }
-            .listStyle(.plain)
-            .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Garden")
+            .scrollIndicators(.hidden)
+            .padding(.horizontal, 16)
             .navigationDestination(item: $selectedPlant) { plant in
                 PlantDetailView(plant: plant)
+            }
+            .listStyle(.plain)
+            .navigationTitle("Garden")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack {
+                        Button {
+                            sunBounce.toggle()
+                            showFavoritesOnly.toggle()
+                        } label: {
+                            Image(systemName: showFavoritesOnly ? "sun.max.fill" : "sun.max")
+                                .foregroundStyle(.yellow)
+                                .symbolEffect(.bounce, value: sunBounce)
+                        }
+
+                        Button(action: {
+                            showingAddSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus")
+                                Text("Add Plant")
+                            }
+                            .foregroundStyle(.green)
+                        }
+                    }
+                }
             }
             .sheet(isPresented: $showingAddSheet) {
                 NavigationStack {
@@ -121,7 +191,7 @@ struct CollectionView: View {
                             .background(Color.green)
                             .cornerRadius(10)
                         }
-                        
+
                         PhotosPicker(
                             selection: $selectedItem,
                             matching: .images,
@@ -144,25 +214,6 @@ struct CollectionView: View {
                 }
                 .presentationDetents([.height(150)])
             }
-            .toolbar() {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: {
-                        showingAddSheet = true
-                    }) {
-                        HStack {
-                            Image(systemName: "plus")
-                            Text("Add Plant")
-                        }
-                        .foregroundStyle(.green)
-                    }
-                    .padding()
-                }
-            }
-            .onChange(of: showingCamera) { isShowing in
-                if isShowing {
-                    showingAddSheet = false
-                }
-            }
             .sheet(isPresented: $showingImagePicker) {
                 if let imageData = selectedImageData {
                     AddPlantView(initialImageData: imageData)
@@ -176,7 +227,7 @@ struct CollectionView: View {
                             if let newValue = newValue,
                                let imageData = Data(base64Encoded: newValue),
                                let uiImage = UIImage(data: imageData),
-                               let compressedData = uiImage.jpegData(compressionQuality: 0.3) {
+                               let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
                                 selectedImageData = compressedData
                                 showingCamera = false
                                 showingImagePicker = true
@@ -192,7 +243,7 @@ struct CollectionView: View {
                     Task {
                         if let data = try? await item.loadTransferable(type: Data.self),
                            let uiImage = UIImage(data: data),
-                           let compressedData = uiImage.jpegData(compressionQuality: 0.3) {
+                           let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
                             selectedImageData = compressedData
                             selectedItem = nil
                             showingAddSheet = false
@@ -214,50 +265,50 @@ struct CollectionView: View {
 
 struct PlantCard: View {
     let plant: PlantEntity
-    
+
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(spacing: 16) {
             if let imageData = plant.imageData,
                let uiImage = UIImage(data: imageData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 120, height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .padding(.leading, 12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            
+
+            // Content
             VStack(alignment: .leading, spacing: 4) {
                 Text(plant.commonName ?? "Undefined")
                     .font(.headline)
-                    .lineLimit(2)
-                
+                    .lineLimit(1)
+
                 Text(plant.scientificName ?? "Undefined")
                     .font(.subheadline)
                     .italic()
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                
-                Spacer()
-                
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
                 if let date = plant.dateAdded {
-                    HStack {
-                        Spacer()
-                        Text(date.formatted(date: .abbreviated, time: .shortened))
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .foregroundStyle(.blue)
+                            .font(.system(size: 12))
+
+                        Text(date.formatted(date: .abbreviated, time: .omitted))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(16)
         .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
+        .background(Color(uiColor: .systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 

@@ -3,8 +3,13 @@ import MapKit
 
 struct PlantDetailView: View {
     let plant: PlantEntity
+    @Environment(\.managedObjectContext) private var viewContext
     @State private var region: MKCoordinateRegion
     @State private var showingShareSheet = false
+    @State private var showingMapSheet = false
+    @State private var isFavorite: Bool
+    @Environment(\.dismiss) var dismiss
+    @State private var showingDeleteAlert = false
     
     private var mapsURL: URL? {
         let latitude = plant.latitude
@@ -24,6 +29,7 @@ struct PlantDetailView: View {
         
         // Create text content
         var text = """
+        Check out what I've found!
         Common Name: \(plant.commonName ?? "Unknown")
         Scientific Name: \(plant.scientificName ?? "Unknown")
         """
@@ -33,7 +39,7 @@ struct PlantDetailView: View {
         }
         
         if let mapsURL = mapsURL {
-            text += "\nView on Maps: \(mapsURL.absoluteString)"
+            text += "\nView on Apple Maps: \(mapsURL.absoluteString)"
         }
         
         if let date = plant.dateAdded {
@@ -56,37 +62,46 @@ struct PlantDetailView: View {
         mapItem.openInMaps()
     }
     
+    private func deletePlant() {
+        viewContext.delete(plant)
+        try? viewContext.save()
+        dismiss()
+    }
+    
     init(plant: PlantEntity) {
         self.plant = plant
-        let coordinate = CLLocationCoordinate2D(
-            latitude: plant.latitude,
-            longitude: plant.longitude
-        )
         _region = State(initialValue: MKCoordinateRegion(
-            center: coordinate,
+            center: CLLocationCoordinate2D(
+                latitude: plant.latitude,
+                longitude: plant.longitude
+            ),
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         ))
+        _isFavorite = State(initialValue: plant.isFavorite)
     }
     
     var body: some View {
         List {
-            Section {
-                if let imageData = plant.imageData,
-                   let uiImage = UIImage(data: imageData) {
-                    HStack {
-                        Spacer()
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .listRowInsets(EdgeInsets())
-                        Spacer()
-                    }
-                    
-                }
-            }
-            .listRowBackground(Color.clear)
+//            Section {
+//                if let imageData = plant.imageData,
+//                   let uiImage = UIImage(data: imageData) {
+//                    GeometryReader { geometry in
+//                        Image(uiImage: uiImage)
+//                            .resizable()
+//                            .scaledToFill()
+//                            .frame(width: geometry.size.width, height: 200)
+//                            .clipShape(RoundedRectangle(cornerRadius: 16))
+//                            .overlay(
+//                                RoundedRectangle(cornerRadius: 16)
+//                                    .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+//                            )
+//                            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+//                    }
+//                    .frame(height: 200)
+//                    .listRowInsets(EdgeInsets())
+//                }
+//            }
+//            .listRowBackground(Color.clear)
             
             Section("Plant Information") {
                 HStack() {
@@ -179,43 +194,46 @@ struct PlantDetailView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-            }
-            if let story = plant.story, story.lowercased() != "none" {
-                Section(header: Text("Story & Mythology")) {
-                    Text(story)
-                        .padding(8)
-                }
-            }
-            
-            // Location Section
-            if let locationName = plant.locationName {
-                Section("Location") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Map(coordinateRegion: $region,
-                            annotationItems: [plant]) { plant in
-                            MapAnnotation(
-                                coordinate: CLLocationCoordinate2D(
-                                    latitude: plant.latitude,
-                                    longitude: plant.longitude
-                                )
-                            ) {
-                                Image(systemName: "leaf.fill")
-                                    .foregroundStyle(.white)
-                                    .background(
-                                        Circle()
-                                            .fill(.green)
-                                            .frame(width: 32, height: 32)
-                                    )
-                            }
+
+                if let bloomingPeriod = plant.bloomingPeriod {
+                    HStack {
+                        Label {
+                            Text("Blooming Period")
+                                .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: "sunrise.fill")
+                                .symbolRenderingMode(.multicolor)
                         }
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        Spacer()
+                        Text(bloomingPeriod)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .listRowBackground(Color.clear)
+
+                if let hemisphere = plant.hemisphere {
+                    HStack {
+                        Label {
+                            Text("Native Region")
+                                .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: "globe")
+                                .foregroundStyle(.blue)
+                        }
+                        Spacer()
+                        Text(hemisphere)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if let story = plant.story, story.lowercased() != "none" {
+                Section(header: Text("Story & Mythology"), footer: Text("Herbi can make mistakes. Verify important information.")) {
+                    Text(story)
+                        .padding(4)
+                }
             }
             
-            // Date Section
             if let date = plant.dateAdded {
                 Section("Added") {
                     HStack {
@@ -241,20 +259,97 @@ struct PlantDetailView: View {
                     Button {
                         openInMaps()
                     } label: {
-                        Image(systemName: "map")
+                        Image(systemName: "location.fill")
                             .foregroundStyle(.blue)
                     }
                     
-                    Button {
-                        showingShareSheet = true
+                    Menu {
+                        Button {
+                            showingShareSheet = true
+                        } label: {
+                            Label("Share to Friends", systemImage: "square.and.arrow.up")
+                        }
+                        .tint(.blue)
+                        
+                        Button {
+                            showingMapSheet = true
+                        } label: {
+                            Label("See on Map", systemImage: "map")
+                        }
+                        .tint(.green)
+                        
+                        Button {
+                            withAnimation(.spring()) {
+                                isFavorite.toggle()
+                                plant.isFavorite = isFavorite
+                                try? viewContext.save()
+                            }
+                        } label: {
+                            Label(
+                                isFavorite ? "Remove from Garden" : "Add to Garden",
+                                systemImage: isFavorite ? "heart.fill" : "heart"
+                            )
+                        }
+                        .tint(isFavorite ? .red : .pink)
+                        
+                        Divider()
+                        
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            Label("Delete Plant", systemImage: "trash")
+                        }
                     } label: {
-                        Image(systemName: "square.and.arrow.up")
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(.primary)
                     }
                 }
             }
         }
+        .alert("Delete Plant", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deletePlant()
+            }
+        } message: {
+            Text("Are you sure you want to delete this plant? This action cannot be undone.")
+        }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(items: shareItems)
+        }
+        .sheet(isPresented: $showingMapSheet) {
+            NavigationStack {
+                MapDetailView(plant: plant)
+            }
+        }
+    }
+}
+
+struct MapDetailView: View {
+    let plant: PlantEntity
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        Map(initialPosition: .region(MKCoordinateRegion(
+            center: CLLocationCoordinate2D(
+                latitude: plant.latitude,
+                longitude: plant.longitude
+            ),
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        ))) {
+            Marker(plant.commonName ?? "Plant", coordinate: CLLocationCoordinate2D(
+                latitude: plant.latitude,
+                longitude: plant.longitude
+            ))
+        }
+        .navigationTitle("Location")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
         }
     }
 }

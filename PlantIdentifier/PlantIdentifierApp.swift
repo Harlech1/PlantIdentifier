@@ -20,12 +20,6 @@ struct PlantIdentifierApp: App {
     var body: some Scene {
         WindowGroup {
             TabView {
-                ContentView()
-                    .tabItem {
-                        Image(systemName: "tree.fill")
-                        Text("Home")
-                    }
-                
                 CollectionView()
                     .tabItem {
                         Image(systemName: "leaf.fill")

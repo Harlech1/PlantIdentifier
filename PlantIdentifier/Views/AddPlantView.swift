@@ -23,6 +23,11 @@ struct AddPlantView: View {
     @State private var symbolism = ""
     @State private var giftTo = ""
     @State private var story = ""
+    @State private var bloomingPeriod = ""
+    @State private var hemisphere = ""
+    @StateObject private var locationManager = LocationManager()
+    @State private var currentLocationName: String = ""
+    @State private var identificationFailed = false
 
     private func savePlant() {
         let newPlant = PlantEntity(context: viewContext)
@@ -35,6 +40,8 @@ struct AddPlantView: View {
         newPlant.symbolism = symbolism
         newPlant.giftTo = giftTo
         newPlant.story = story
+        newPlant.bloomingPeriod = bloomingPeriod
+        newPlant.hemisphere = hemisphere
 
         if let coordinate = selectedCoordinate {
             newPlant.latitude = coordinate.latitude
@@ -52,153 +59,199 @@ struct AddPlantView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // Image Section
-                Section {
-                    if let uiImage = UIImage(data: initialImageData) {
-                        HStack {
-                            Spacer()
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 200)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+            Group {
+                if identificationFailed {
+                    ContentUnavailableView(
+                        "Unable to Identify Plant",
+                        systemImage: "leaf.circle.fill",
+                        description: Text("We couldn't identify this plant. Please try again with a clearer photo.")
+                    )
+                    .foregroundStyle(.red)
+                } else {
+                    List {
+                        Section {
+                            if let uiImage = UIImage(data: initialImageData) {
+                                GeometryReader { geometry in
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: geometry.size.width, height: 200)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                                        )
+                                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                                }
+                                .frame(height: 200)
                                 .listRowInsets(EdgeInsets())
-                            Spacer()
-                        }
-                    }
-                }
-                .listRowBackground(Color.clear)
-
-                if isAnalyzing {
-                    Section {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(1.2)
-                            Text("Analyzing plant...")
-                                .foregroundColor(.secondary)
-                                .padding(.leading)
-                        }
-                    }
-                }
-
-                if !commonName.isEmpty {
-                    Section("Plant Information") {
-                        HStack() {
-                            Label {
-                                Text("Common Name")
-                                    .foregroundColor(.secondary)
-                            } icon: {
-                                Image(systemName: "leaf.fill")
-                                    .foregroundStyle(.green)
                             }
-                            Spacer()
-                            Text(commonName)
-                                .bold()
-                                .multilineTextAlignment(.trailing)
-                                .fixedSize(horizontal: false, vertical: true)
                         }
+                        .listRowBackground(Color.clear)
 
-                        HStack() {
-                            Label {
-                                Text("Scientific Name")
-                                    .foregroundColor(.secondary)
-                            } icon: {
-                                Image(systemName: "text.book.closed.fill")
-                                    .foregroundStyle(.brown)
-                            }
-                            Spacer()
-                            Text(scientificName)
-                                .italic()
-                                .multilineTextAlignment(.trailing)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        HStack() {
-                            Label {
-                                Text("Toxicity")
-                                    .foregroundColor(.secondary)
-                            } icon: {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(isPoisonous.lowercased() == "yes" ? .red : .gray)
-                            }
-                            Spacer()
-                            Text(isPoisonous.isEmpty ? "Unknown" : isPoisonous)
-                                .foregroundColor(isPoisonous.lowercased() == "yes" ? .red : .primary)
-                                .multilineTextAlignment(.trailing)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Button(action: {
-                            showingLocationPicker = true
-                        }) {
-                            HStack {
-                                Label {
-                                    Text("Location")
+                        if isAnalyzing {
+                            Section {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(1.2)
+                                    Text("Analyzing plant...")
                                         .foregroundColor(.secondary)
-                                } icon: {
-                                    Image(systemName: "location.fill")
-                                        .foregroundStyle(.red)
+                                        .padding(.leading)
                                 }
-                                Spacer()
-                                Text(locationName.isEmpty ? "Select Location" : locationName)
-                                    .foregroundColor(locationName.isEmpty ? .blue : .primary)
-                                    .multilineTextAlignment(.trailing)
-                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
 
-                        HStack() {
-                            Label {
-                                Text("Added")
-                                    .foregroundColor(.secondary)
-                            } icon: {
-                                Image(systemName: "calendar")
-                                    .foregroundStyle(.blue)
-                            }
-                            Spacer()
-                            Text(Date().formatted(date: .abbreviated, time: .shortened))
-                                .multilineTextAlignment(.trailing)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        if !symbolism.isEmpty {
-                            HStack() {
-                                Label {
-                                    Text("Symbolism")
-                                        .foregroundColor(.secondary)
-                                } icon: {
-                                    Image(systemName: "heart.fill")
-                                        .foregroundStyle(.pink)
+                        if !commonName.isEmpty {
+                            Section("Plant Information") {
+                                HStack() {
+                                    Label {
+                                        Text("Common Name")
+                                            .foregroundColor(.secondary)
+                                    } icon: {
+                                        Image(systemName: "leaf.fill")
+                                            .foregroundStyle(.green)
+                                    }
+                                    Spacer()
+                                    Text(commonName)
+                                        .bold()
+                                        .multilineTextAlignment(.trailing)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
-                                Spacer()
-                                Text(symbolism)
-                                    .multilineTextAlignment(.trailing)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
 
-                        if !giftTo.isEmpty {
-                            HStack() {
-                                Label {
-                                    Text("Gift To")
-                                        .foregroundColor(.secondary)
-                                } icon: {
-                                    Image(systemName: "gift.fill")
-                                        .foregroundStyle(.purple)
+                                HStack() {
+                                    Label {
+                                        Text("Scientific Name")
+                                            .foregroundColor(.secondary)
+                                    } icon: {
+                                        Image(systemName: "text.book.closed.fill")
+                                            .foregroundStyle(.brown)
+                                    }
+                                    Spacer()
+                                    Text(scientificName)
+                                        .italic()
+                                        .multilineTextAlignment(.trailing)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
-                                Spacer()
-                                Text(giftTo)
-                                    .multilineTextAlignment(.trailing)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    if !story.isEmpty && story.lowercased() != "none" {
-                        Section(header: Text("Story & Mythology")) {
-                            Text(story)
-                                .padding(8)
 
+                                HStack() {
+                                    Label {
+                                        Text("Toxicity")
+                                            .foregroundColor(.secondary)
+                                    } icon: {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundStyle(isPoisonous.lowercased() == "yes" ? .red : .orange)
+                                    }
+                                    Spacer()
+                                    Text(isPoisonous.isEmpty ? "Unknown" : isPoisonous)
+                                        .foregroundColor(isPoisonous.lowercased() == "yes" ? .red : .primary)
+                                        .multilineTextAlignment(.trailing)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                Button(action: {
+                                    showingLocationPicker = true
+                                }) {
+                                    HStack {
+                                        Label {
+                                            Text("Location")
+                                                .foregroundColor(.secondary)
+                                        } icon: {
+                                            Image(systemName: "location.fill")
+                                                .foregroundStyle(.red)
+                                        }
+                                        Spacer()
+                                        Text(locationName.isEmpty ? "Select Location" : locationName)
+                                            .foregroundColor(locationName.isEmpty ? .blue : .primary)
+                                            .multilineTextAlignment(.trailing)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+
+                                HStack() {
+                                    Label {
+                                        Text("Added")
+                                            .foregroundColor(.secondary)
+                                    } icon: {
+                                        Image(systemName: "calendar")
+                                            .foregroundStyle(.blue)
+                                    }
+                                    Spacer()
+                                    Text(Date().formatted(date: .abbreviated, time: .shortened))
+                                        .multilineTextAlignment(.trailing)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                if !symbolism.isEmpty {
+                                    HStack() {
+                                        Label {
+                                            Text("Symbolism")
+                                                .foregroundColor(.secondary)
+                                        } icon: {
+                                            Image(systemName: "heart.fill")
+                                                .foregroundStyle(.pink)
+                                        }
+                                        Spacer()
+                                        Text(symbolism)
+                                            .multilineTextAlignment(.trailing)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+
+                                if !giftTo.isEmpty {
+                                    HStack() {
+                                        Label {
+                                            Text("Gift To")
+                                                .foregroundColor(.secondary)
+                                        } icon: {
+                                            Image(systemName: "gift.fill")
+                                                .foregroundStyle(.purple)
+                                        }
+                                        Spacer()
+                                        Text(giftTo)
+                                            .multilineTextAlignment(.trailing)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+
+                                if !bloomingPeriod.isEmpty {
+                                    HStack {
+                                        Label {
+                                            Text("Blooming Period")
+                                                .foregroundColor(.secondary)
+                                        } icon: {
+                                            Image(systemName: "sunrise.fill")
+                                                .symbolRenderingMode(.multicolor)
+                                        }
+                                        Spacer()
+                                        Text(bloomingPeriod)
+                                            .multilineTextAlignment(.trailing)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+
+                                if !hemisphere.isEmpty {
+                                    HStack {
+                                        Label {
+                                            Text("Native Region")
+                                                .foregroundColor(.secondary)
+                                        } icon: {
+                                            Image(systemName: "globe")
+                                                .foregroundStyle(.blue)
+                                        }
+                                        Spacer()
+                                        Text(hemisphere)
+                                            .multilineTextAlignment(.trailing)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                            if !story.isEmpty && story.lowercased() != "none" {
+                                Section(header: Text("Story & Mythology")) {
+                                    Text(story)
+                                        .padding(8)
+
+                                }
+                            }
                         }
                     }
                 }
@@ -216,7 +269,7 @@ struct AddPlantView: View {
                     Button("Save") {
                         savePlant()
                     }
-                    .disabled(commonName.isEmpty)
+                    .disabled(commonName.isEmpty || identificationFailed)
                 }
             }
             .sheet(isPresented: $showingLocationPicker) {
@@ -228,17 +281,40 @@ struct AddPlantView: View {
         }
         .onAppear {
             Task {
+                if let location = locationManager.location {
+                    await getCurrentLocationName(from: location)
+                }
                 await analyzePlant(imageData: initialImageData)
             }
         }
     }
 
+    private func getCurrentLocationName(from location: CLLocation) async {
+        let geocoder = CLGeocoder()
+        do {
+            if let placemark = try await geocoder.reverseGeocodeLocation(location).first {
+                let locationComponents = [
+                    placemark.locality,
+                    placemark.administrativeArea,
+                    placemark.country
+                ].compactMap { $0 }
+                currentLocationName = locationComponents.joined(separator: ", ")
+            }
+        } catch {
+            print("Geocoding error: \(error)")
+        }
+    }
+
     func analyzePlant(imageData: Data) async {
         isAnalyzing = true
+        identificationFailed = false
+        
         let apiKey = "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"
         let endpoint = "https://api.openai.com/v1/chat/completions"
 
         let base64Image = imageData.base64EncodedString()
+        let locationContext = currentLocationName.isEmpty ? "" : "Note that this picture was taken in \(currentLocationName). Use this information to help with identification, but do not include the location in your response."
+        
         let payload: [String: Any] = [
             "model": "gpt-4o",
             "messages": [
@@ -248,12 +324,15 @@ struct AddPlantView: View {
                         [
                             "type": "text",
                             "text": """
+                            \(locationContext)
                             Identify this plant and provide ONLY the following information in this exact format:
                             common_name: NAME
                             scientific_name: FULL NAME (Genus and species, e.g., Myosotis sylvatica; include both parts)
                             poisonous: YES/NO/UNKNOWN (If toxic to humans or pets)
-                            symbolism: TWO OR THREE WORDS MAX (e.g., peace, love, resilience; represents the core idea or emotion associated with the plant)
-                            gift_to: TWO OR THREE WORDS MAX (e.g., close friends, lovers; describes two types of ideal recipients for gifting this plant)
+                            blooming_period: SEASON/MONTHS (e.g., Spring-Summer or March-July)
+                            hemisphere: North/South/Both (Where this plant naturally blooms)
+                            symbolism: TWO OR THREE WORDS MAX (e.g., peace, love, resilience)
+                            gift_to: TWO OR THREE WORDS MAX (e.g., close friends, lovers)
                             story: A BRIEF INTERESTING STORY OR MYTH ABOUT THIS PLANT (if none, write NONE)
                             Ensure that only "symbolism" and "gift_to" are limited to two or three words, and "story" can be a full sentence or more. Do not include any additional text.
                             """
@@ -288,27 +367,42 @@ struct AddPlantView: View {
                let firstChoice = choices.first,
                let message = firstChoice["message"] as? [String: Any],
                let content = message["content"] as? String {
+                
+                if content.lowercased().contains("unable to identify") || 
+                   content.lowercased().contains("cannot identify") ||
+                   !content.lowercased().contains("common_name:") {
+                    identificationFailed = true
+                } else {
+                    print(content)
 
-                // Parse the response
-                let lines = content.components(separatedBy: "\n")
-                for line in lines {
-                    if line.lowercased().starts(with: "common_name:") {
-                        commonName = line.replacingOccurrences(of: "common_name:", with: "").trimmingCharacters(in: .whitespaces)
-                    } else if line.lowercased().starts(with: "scientific_name:") {
-                        scientificName = line.replacingOccurrences(of: "scientific_name:", with: "").trimmingCharacters(in: .whitespaces)
-                    } else if line.lowercased().starts(with: "poisonous:") {
-                        isPoisonous = line.replacingOccurrences(of: "poisonous:", with: "").trimmingCharacters(in: .whitespaces)
-                    } else if line.lowercased().starts(with: "symbolism:") {
-                        symbolism = line.replacingOccurrences(of: "symbolism:", with: "").trimmingCharacters(in: .whitespaces)
-                    } else if line.lowercased().starts(with: "gift_to:") {
-                        giftTo = line.replacingOccurrences(of: "gift_to:", with: "").trimmingCharacters(in: .whitespaces)
-                    } else if line.lowercased().starts(with: "story:") {
-                        story = line.replacingOccurrences(of: "story:", with: "").trimmingCharacters(in: .whitespaces)
+                    // Parse the response
+                    let lines = content.components(separatedBy: "\n")
+                    for line in lines {
+                        if line.lowercased().starts(with: "common_name:") {
+                            commonName = line.replacingOccurrences(of: "common_name:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "scientific_name:") {
+                            scientificName = line.replacingOccurrences(of: "scientific_name:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "poisonous:") {
+                            isPoisonous = line.replacingOccurrences(of: "poisonous:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "blooming_period:") {
+                            bloomingPeriod = line.replacingOccurrences(of: "blooming_period:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "hemisphere:") {
+                            hemisphere = line.replacingOccurrences(of: "hemisphere:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "symbolism:") {
+                            symbolism = line.replacingOccurrences(of: "symbolism:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "gift_to:") {
+                            giftTo = line.replacingOccurrences(of: "gift_to:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "story:") {
+                            story = line.replacingOccurrences(of: "story:", with: "").trimmingCharacters(in: .whitespaces)
+                        }
                     }
                 }
+            } else {
+                identificationFailed = true
             }
         } catch {
             print("Error: \(error)")
+            identificationFailed = true
         }
 
         isAnalyzing = false
@@ -334,13 +428,6 @@ struct LocationPickerView: View {
         NavigationStack {
             ZStack {
                 VStack(spacing: 0) {
-                    TextField("Search location", text: $searchText)
-                        .textFieldStyle(.roundedBorder)
-                        .padding()
-                        .onChange(of: searchText) { _ in
-                            searchLocations()
-                        }
-
                     if !searchResults.isEmpty {
                         List(searchResults, id: \.self) { item in
                             Button {
@@ -361,9 +448,7 @@ struct LocationPickerView: View {
                         Map(coordinateRegion: $region, showsUserLocation: true)
                             .onChange(of: region.center.latitude) { _ in
                                 isDragging = true
-                                // Cancel previous timer if it exists
                                 debounceTimer?.invalidate()
-                                // Create new timer
                                 debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
                                     isDragging = false
                                     reverseGeocode(region.center)
@@ -372,19 +457,10 @@ struct LocationPickerView: View {
                     }
                 }
 
-                // Center Pin
                 if searchResults.isEmpty {
-                    VStack {
-                        Image(systemName: "mappin")
-                            .font(.title)
-                            .foregroundColor(.red)
-                            .opacity(isDragging ? 0.5 : 1.0)
-
-                        Circle()
-                            .fill(.red)
-                            .frame(width: 5, height: 5)
-                            .shadow(radius: 2)
-                    }
+                    Circle()
+                        .fill(isDragging ? .green.opacity(0.85) : .green)
+                        .frame(width: 8, height: 8)
 
                     VStack {
                         Spacer()
@@ -403,7 +479,7 @@ struct LocationPickerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("Dismiss") {
                         dismiss()
                     }
                 }
@@ -458,17 +534,6 @@ struct LocationPickerView: View {
                 ].compactMap { $0 }.joined(separator: ", ")
                 locationName = address
             }
-        }
-    }
-
-    private func searchLocations() {
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = searchText
-        request.region = region
-
-        MKLocalSearch(request: request).start { response, error in
-            guard let response = response else { return }
-            searchResults = response.mapItems
         }
     }
 }

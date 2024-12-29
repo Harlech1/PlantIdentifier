@@ -24,6 +24,10 @@ struct PlantIdentifierApp: App {
                 print("Error requesting notification permission: \(error)")
             }
         }
+        
+        // Add this to customize tab bar appearance
+        UIPageControl.appearance().currentPageIndicatorTintColor = .systemGreen
+        UIPageControl.appearance().pageIndicatorTintColor = .systemGreen.withAlphaComponent(0.2)
     }
     
     var body: some Scene {

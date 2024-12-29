@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import TPackage
 
 struct PlantDetailView: View {
     let plant: PlantEntity
@@ -11,6 +12,8 @@ struct PlantDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingDeleteAlert = false
     @State private var showingWateringSheet = false
+    @State private var showPaywall = false
+    @EnvironmentObject var premiumManager: TKPremiumManager
     
     private var mapsURL: URL? {
         let latitude = plant.latitude
@@ -88,7 +91,7 @@ struct PlantDetailView: View {
                 Text("Plant Information")
                 Image(systemName: "laurel.trailing")
                     .symbolRenderingMode(.multicolor)
-            }) {
+            },footer: Text("Herbi can make mistakes. Verify important information.")) {
                 HStack() {
                     Label {
                         Text("Common Name")
@@ -161,6 +164,13 @@ struct PlantDetailView: View {
                         Text(symbolism)
                             .multilineTextAlignment(.trailing)
                             .fixedSize(horizontal: false, vertical: true)
+                            .blur(radius: premiumManager.isPremium ? 0 : 5)
+
+                    }
+                    .onTapGesture {
+                        if !premiumManager.isPremium {
+                            showPaywall = true
+                        }
                     }
                 }
                 
@@ -177,6 +187,12 @@ struct PlantDetailView: View {
                         Text(giftTo)
                             .multilineTextAlignment(.trailing)
                             .fixedSize(horizontal: false, vertical: true)
+                            .blur(radius: premiumManager.isPremium ? 0 : 5)
+                    }
+                    .onTapGesture {
+                        if !premiumManager.isPremium {
+                            showPaywall = true
+                        }
                     }
                 }
 
@@ -248,7 +264,11 @@ struct PlantDetailView: View {
                 }
 
                 Button {
-                    showingWateringSheet = true
+                    if premiumManager.isPremium {
+                        showingWateringSheet = true
+                    } else {
+                        showPaywall = true
+                    }
                 } label: {
                     Label("Set Watering Schedule", systemImage: "timer")
                 }
@@ -259,9 +279,15 @@ struct PlantDetailView: View {
                     Image(systemName: "book.pages")
                         .symbolRenderingMode(.hierarchical)
                     Text("Story & Mythology")
-                }, footer: Text("Herbi can make mistakes. Verify important information.")) {
+                }) {
                     Text(story)
                         .padding(4)
+                        .blur(radius: premiumManager.isPremium ? 0 : 5)
+                        .onTapGesture {
+                            if !premiumManager.isPremium {
+                                showPaywall = true
+                            }
+                        }
                 }
             }
             
@@ -358,6 +384,27 @@ struct PlantDetailView: View {
         .sheet(isPresented: $showingWateringSheet) {
             WateringScheduleView(plant: plant)
         }
+        .fullScreenCover(isPresented: $showPaywall) {
+            CustomPaywallView(secondDelayOpen: true)
+                .paywallFooter(condensed: true)
+                .onPurchaseCompleted { customerInfo in
+                    Task {
+                        await premiumManager.checkPremiumStatus()
+                        if premiumManager.isPremium {
+                            showPaywall = false
+                        }
+                    }
+                }
+                .onRestoreCompleted { customerInfo in
+                    Task {
+                        await premiumManager.checkPremiumStatus()
+                        if premiumManager.isPremium {
+                            showPaywall = false
+                        }
+                    }
+                }
+                .interactiveDismissDisabled()
+        }
     }
 }
 
@@ -442,7 +489,8 @@ struct WateringScheduleView: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.height(250)])
+        .presentationCornerRadius(30)
     }
     
     private func saveWateringSchedule() {

@@ -48,7 +48,7 @@ struct CustomPaywallView: View {
                     }
                     
                     VStack(spacing: 12) {
-                        Text("Identify every plant you see!")
+                        Text("Turn Plant Curiosity into Expert Knowledge")
                             .font(.system(.title, design: .rounded))
                             .fontWeight(.bold)
                             .multilineTextAlignment(.center)
@@ -63,29 +63,36 @@ struct CustomPaywallView: View {
                     VStack(spacing: 8) {
                         FeatureRow(
                             icon: "leaf.fill",
-                            title: "Infinite Identifications",
+                            title: "Identify Any Plant",
                             gradient: [.green]
                         )
                         .transition(.scale.combined(with: .opacity))
 
                         FeatureRow(
-                            icon: "person.crop.circle.badge.questionmark",
-                            title: "Extensive Care For Plants",
-                            gradient: [.yellow]
+                            icon: "book.fill",
+                            title: "Discover Stories & Myths",
+                            gradient: [.purple]
                         )
                         .transition(.scale.combined(with: .opacity))
 
                         FeatureRow(
-                            icon: "map.fill",
-                            title: "See Plants on Map",
-                            gradient: [.red]
+                            icon: "heart.fill",
+                            title: "Learn Hidden Meanings",
+                            gradient: [.pink]
                         )
                         .transition(.scale.combined(with: .opacity))
 
                         FeatureRow(
-                            icon: "drop.fill",
-                            title: "Know When to Water",
+                            icon: "bell.fill",
+                            title: "Get Care Reminders",
                             gradient: [.blue]
+                        )
+                        .transition(.scale.combined(with: .opacity))
+
+                        FeatureRow(
+                            icon: "gift.fill",
+                            title: "Thoughtful Gift Ideas",
+                            gradient: [.orange]
                         )
                         .transition(.scale.combined(with: .opacity))
                     }
@@ -122,7 +129,6 @@ private struct FeatureRow: View {
         HStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.title2)
-//                .foregroundStyle(LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
                 .foregroundStyle(gradient[0].gradient)
                 .frame(width: 32)
             
@@ -139,8 +145,6 @@ private struct FeatureRow: View {
                 .font(.title2)
                 .foregroundStyle(LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
                 .frame(width: 32)
-
-
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()

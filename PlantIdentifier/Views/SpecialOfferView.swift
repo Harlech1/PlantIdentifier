@@ -54,7 +54,7 @@ struct SpecialOfferView: View {
                                 .font(.system(.title, design: .rounded))
                                 .fontWeight(.bold)
                             
-                            Text("Don't Miss Out!")
+                            Text("Don't miss out!")
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
 
@@ -91,27 +91,39 @@ struct SpecialOfferView: View {
                         .padding(.top, 32)
                         
                         VStack(spacing: 16) {
-                            Text("What's Included")
+                            Text("Premium Features")
                                 .font(.system(.title2, design: .rounded))
                                 .fontWeight(.bold)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            
+
                             FeatureRow(
-                                icon: "infinity",
-                                title: "Unlimited Songs",
-                                subtitle: "Create as many remixes as you want"
+                                icon: "leaf.fill",
+                                title: "Identify Any Plant Instantly",
+                                subtitle: "Unlimited plant identifications at your fingertips"
                             )
                             
                             FeatureRow(
-                                icon: "wand.and.stars",
-                                title: "All Premium Effects",
-                                subtitle: "Access to all premium effects"
+                                icon: "book.fill",
+                                title: "Discover Plant Stories",
+                                subtitle: "Learn ancient myths and cultural significance"
                             )
                             
                             FeatureRow(
                                 icon: "heart.fill",
-                                title: "Support Indie Developer",
-                                subtitle: "Help me create more awesome features"
+                                title: "Plant Symbolism",
+                                subtitle: "Understand what each plant represents"
+                            )
+                            
+                            FeatureRow(
+                                icon: "gift.fill",
+                                title: "Perfect Gift Guide",
+                                subtitle: "Know exactly who to gift each plant to"
+                            )
+                            
+                            FeatureRow(
+                                icon: "bell.fill",
+                                title: "Smart Care Reminders",
+                                subtitle: "Never forget to water your plants again"
                             )
                         }
                         .padding(.horizontal)
@@ -221,7 +233,7 @@ struct SpecialOfferView: View {
                             .foregroundStyle(.gray)
                         
                         Button {
-                            if let url = URL(string: "https://songx.turkerkizilcik.com/privacy-policy.html") {
+                            if let url = URL(string: "https://turkerkizilcik.com/plantid/privacy-policy.html") {
                                 UIApplication.shared.open(url)
                             }
                         } label: {
@@ -235,7 +247,7 @@ struct SpecialOfferView: View {
                             .foregroundStyle(.gray)
                         
                         Button {
-                            if let url = URL(string:  "https://songx.turkerkizilcik.com/terms-of-use.html") {
+                            if let url = URL(string:  "https://turkerkizilcik.com/plantid/terms-of-use.html") {
                                 UIApplication.shared.open(url)
                             }
                         } label: {

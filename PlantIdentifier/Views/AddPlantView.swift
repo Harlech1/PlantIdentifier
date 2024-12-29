@@ -317,6 +317,8 @@ struct AddPlantView: View {
         
         let payload: [String: Any] = [
             "model": "gpt-4o",
+            "temperature": 0.2,
+            "top_p": 0.2,
             "messages": [
                 [
                     "role": "user",
@@ -333,7 +335,7 @@ struct AddPlantView: View {
                             native_region: REGIONS (e.g., Mediterranean Basin, Eastern Asia, North America)
                             symbolism: TWO OR THREE WORDS MAX (e.g., peace, love, resilience)
                             gift_to: TWO OR THREE WORDS MAX (e.g., close friends, lovers)
-                            story: A BRIEF INTERESTING STORY OR MYTH ABOUT THIS PLANT (if none, write NONE)
+                            story: A BRIEF INTERESTING STORY OR MYTH ABOUT THIS PLANT, TWO PARAGRAPHS IS ENOUGH (if none, write NONE)
                             Ensure that only "symbolism" and "gift_to" are limited to two or three words, and "story" can be a full sentence or more. For native_region, list the main geographical regions where this plant naturally occurs. Do not include any additional text.
                             """
                         ],

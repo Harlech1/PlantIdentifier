@@ -15,7 +15,6 @@ struct PlantDetailView: View {
     private var mapsURL: URL? {
         let latitude = plant.latitude
         let longitude = plant.longitude
-        // Create Apple Maps URL with coordinates
         return URL(string: "http://maps.apple.com/?ll=\(latitude),\(longitude)")
     }
     

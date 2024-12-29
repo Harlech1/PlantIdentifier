@@ -8,51 +8,38 @@
 import SwiftUI
 import PhotosUI
 import CoreData
-
-struct Plant: Identifiable, Codable {
-    var id: UUID
-    let commonName: String
-    let scientificName: String
-    let imageData: Data
-
-    init(id: UUID = UUID(), commonName: String, scientificName: String, imageData: Data) {
-        self.id = id
-        self.commonName = commonName
-        self.scientificName = scientificName
-        if let uiImage = UIImage(data: imageData),
-           let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
-            self.imageData = compressedData
-        } else {
-            self.imageData = imageData
-        }
-    }
-}
-
-// Add this extension for image processing
-extension UIImage {
-    func compressed(quality: CGFloat = 0.5, maxWidth: CGFloat = 1024) -> Data? {
-        let scale = maxWidth / self.size.width
-        let newHeight = self.size.height * scale
-        let newWidth = self.size.width * scale
-        let newSize = CGSize(width: newWidth, height: newHeight)
-        
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 1)
-        defer { UIGraphicsEndImageContext() }
-        
-        self.draw(in: CGRect(origin: .zero, size: newSize))
-        guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext() else { return nil }
-        
-        return resizedImage.jpegData(compressionQuality: quality)
-    }
-}
+import TPackage
 
 struct CollectionView: View {
-    @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject var premiumManager: TKPremiumManager
+    @StateObject private var ratingManager = RatingManager.shared
+
     @State private var searchText = ""
     @State private var showFavoritesOnly = false
     @State private var sunBounce = false
-    @State private var selectedPlant: PlantEntity?
 
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @AppStorage("launchCount") private var launchCount: Int = 0
+    @State private var hasShownInitialPaywall = false
+    @State private var showPaywall = false
+    @State private var showOnboarding = false
+    @State private var showSpecialOffer = false
+
+    @State private var showingAddSheet = false
+    @State private var showingImagePicker = false
+    @State private var showingCamera = false
+    @State private var selectedImageData: Data?
+    @State private var selectedItem: PhotosPickerItem?
+
+    let columns = [GridItem(.flexible())]
+
+    @State private var isBouncingRainbow = false
+    @State private var isBouncingRain = false
+    @State private var rainbowTimer: Timer?
+    @State private var rainTimer: Timer?
+
+    @Environment(\.managedObjectContext) private var viewContext
+    @State private var selectedPlant: PlantEntity?
     var plantRequest: FetchRequest<PlantEntity>
     private var plants: FetchedResults<PlantEntity> { plantRequest.wrappedValue }
 
@@ -79,29 +66,6 @@ struct CollectionView: View {
             return filtered
         }
     }
-
-    @State private var showingAddSheet = false
-    @State private var showingImagePicker = false
-    @State private var showingCamera = false
-    @State private var selectedImageData: Data?
-    @State private var selectedItem: PhotosPickerItem?
-
-    let columns = [GridItem(.flexible())]
-
-    private func deletePlant(_ plant: PlantEntity) {
-        viewContext.delete(plant)
-
-        do {
-            try viewContext.save()
-        } catch {
-            print("Error deleting plant: \(error)")
-        }
-    }
-
-    @State private var isBouncingRainbow = false
-    @State private var isBouncingRain = false
-    @State private var rainbowTimer: Timer?
-    @State private var rainTimer: Timer?
 
     var body: some View {
         NavigationStack {
@@ -271,62 +235,72 @@ struct CollectionView: View {
                 }
             }
         }
-        .refreshable {
-            print("hi")
-        }
-        .searchable(
-            text: $searchText,
-            prompt: "Search plants..."
-        )
-    }
-}
-
-struct PlantCard: View {
-    let plant: PlantEntity
-
-    var body: some View {
-        HStack(spacing: 16) {
-            if let imageData = plant.imageData,
-               let uiImage = UIImage(data: imageData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 120, height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+        .task {
+            await premiumManager.checkPremiumStatus()
+            
+            if !hasSeenOnboarding {
+                showOnboarding = true
+            } else if !hasShownInitialPaywall && !premiumManager.isPremium {
+                showPaywall = true
+                hasShownInitialPaywall = true
+            }
+            
+            if launchCount == 3 {
+                await ratingManager.requestReview()
             }
 
-            // Content
-            VStack(alignment: .leading, spacing: 4) {
-                Text(plant.commonName ?? "Undefined")
-                    .font(.headline)
-                    .lineLimit(1)
-
-                Text(plant.scientificName ?? "Undefined")
-                    .font(.subheadline)
-                    .italic()
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-
-                if let date = plant.dateAdded {
-                    HStack(spacing: 6) {
-                        Image(systemName: "calendar")
-                            .foregroundStyle(.blue)
-                            .font(.system(size: 12))
-
-                        Text(date.formatted(date: .abbreviated, time: .omitted))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            launchCount += 1
+        }
+        .fullScreenCover(isPresented: $showSpecialOffer) {
+            SpecialOfferView()
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView()
+                .interactiveDismissDisabled()
+                .onDisappear {
+                    hasSeenOnboarding = true
+                    if !premiumManager.isPremium && !hasShownInitialPaywall {
+                        showPaywall = true
+                        hasShownInitialPaywall = true
                     }
                 }
-            }
-
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity)
-        .background(Color(uiColor: .systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .fullScreenCover(isPresented: $showPaywall) {
+            CustomPaywallView(secondDelayOpen: true)
+                .paywallFooter(condensed: true)
+                .onPurchaseCompleted { customerInfo in
+                    Task {
+                        await premiumManager.checkPremiumStatus()
+                        if premiumManager.isPremium {
+                            showPaywall = false
+                        }
+                    }
+                }
+                .onRestoreCompleted { customerInfo in
+                    Task {
+                        await premiumManager.checkPremiumStatus()
+                        if premiumManager.isPremium {
+                            showPaywall = false
+                        }
+                    }
+                }
+                .onDisappear {
+                    if !premiumManager.isPremium && !showSpecialOffer && launchCount % 2 == 1 {
+                        showSpecialOffer = true
+                    }
+                }
+                .interactiveDismissDisabled()
+        }
+    }
+
+    private func deletePlant(_ plant: PlantEntity) {
+        viewContext.delete(plant)
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting plant: \(error)")
+        }
     }
 }
 

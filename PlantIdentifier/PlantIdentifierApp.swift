@@ -11,6 +11,8 @@ import TPackage
 @main
 struct PlantIdentifierApp: App {
     @StateObject var premiumManager = TKPremiumManager.shared
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @State private var showInitialPaywall = false
     let persistenceController = CoreDataManager.shared
     
     init() {

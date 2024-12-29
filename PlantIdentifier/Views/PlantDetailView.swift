@@ -32,7 +32,7 @@ struct PlantDetailView: View {
         
         // Create text content
         var text = """
-        Check out what I've found!
+        Check out what I've found with Herbi!
         Common Name: \(plant.commonName ?? "Unknown")
         Scientific Name: \(plant.scientificName ?? "Unknown")
         """
@@ -48,7 +48,9 @@ struct PlantDetailView: View {
         if let date = plant.dateAdded {
             text += "\nAdded: \(date.formatted(date: .long, time: .shortened))"
         }
-        
+
+        text += "\nInstall Herbi today! https://apps.apple.com/us/app/herbi-ai-plant-identifier/id6739781021"
+
         items.append(text)
         
         return items

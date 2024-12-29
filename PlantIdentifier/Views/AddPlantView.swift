@@ -315,50 +315,102 @@ struct AddPlantView: View {
         isAnalyzing = true
         identificationFailed = false
         
+        let endpoint = "https://api.turkerkizilcik.com/chat/index.php"
+
         let base64Image = imageData.base64EncodedString()
+        let locationContext = currentLocationName.isEmpty ? "" : "Note that this picture was taken in \(currentLocationName). Use this information to help with identification, but do not include the location in your response."
         
-        // Prepare the request
-        guard let url = URL(string: "https://api.turkerkizilcik.com/plant-identify.php") else {
-            print("Invalid URL")
+        let payload: [String: Any] = [
+            "model": "gpt-4o",
+            "temperature": 0.2,
+            "top_p": 0.2,
+            "messages": [
+                [
+                    "role": "user",
+                    "content": [
+                        [
+                            "type": "text",
+                            "text": """
+                            \(locationContext)
+                            Identify this plant and provide ONLY the following information in this exact format:
+                            common_name: NAME
+                            scientific_name: FULL NAME (Genus and species, e.g., Myosotis sylvatica; include both parts)
+                            poisonous: YES/NO/UNKNOWN (If toxic to humans or pets)
+                            blooming_period: SEASON/MONTHS (e.g., Spring-Summer or March-July)
+                            native_region: REGIONS (e.g., Mediterranean Basin, Eastern Asia, North America)
+                            symbolism: TWO OR THREE WORDS MAX (e.g., peace, love, resilience)
+                            gift_to: TWO OR THREE WORDS MAX (e.g., close friends, lovers)
+                            story: A BRIEF INTERESTING STORY OR MYTH ABOUT THIS PLANT, TWO PARAGRAPHS IS ENOUGH (if none, write NONE)
+                            Ensure that only "symbolism" and "gift_to" are limited to two or three words, and "story" can be a full sentence or more. For native_region, list the main geographical regions where this plant naturally occurs. Do not include any additional text.
+                            """
+                        ],
+                        [
+                            "type": "image_url",
+                            "image_url": [
+                                "url": "data:image/jpeg;base64,\(base64Image)"
+                            ]
+                        ]
+                    ]
+                ]
+            ],
+            "max_tokens": 300
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else {
             isAnalyzing = false
             return
         }
-        
-        let parameters = [
-            "image": base64Image,
-            "location": currentLocationName
-        ]
-        
-        var request = URLRequest(url: url)
+
+        var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
-            
             let (data, _) = try await URLSession.shared.data(for: request)
-            
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                if let success = json["success"] as? Bool, success {
-                    if let result = json["data"] as? [String: String] {
-                        commonName = result["common_name"] ?? ""
-                        scientificName = result["scientific_name"] ?? ""
-                        isPoisonous = result["poisonous"] ?? ""
-                        bloomingPeriod = result["blooming_period"] ?? ""
-                        nativeRegion = result["native_region"] ?? ""
-                        symbolism = result["symbolism"] ?? ""
-                        giftTo = result["gift_to"] ?? ""
-                        story = result["story"] ?? ""
-                    }
-                } else {
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let choices = json["choices"] as? [[String: Any]],
+               let firstChoice = choices.first,
+               let message = firstChoice["message"] as? [String: Any],
+               let content = message["content"] as? String {
+                
+                if content.lowercased().contains("unable to identify") || 
+                   content.lowercased().contains("cannot identify") ||
+                   !content.lowercased().contains("common_name:") {
                     identificationFailed = true
+                } else {
+                    print(content)
+
+                    // Parse the response
+                    let lines = content.components(separatedBy: "\n")
+                    for line in lines {
+                        if line.lowercased().starts(with: "common_name:") {
+                            commonName = line.replacingOccurrences(of: "common_name:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "scientific_name:") {
+                            scientificName = line.replacingOccurrences(of: "scientific_name:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "poisonous:") {
+                            isPoisonous = line.replacingOccurrences(of: "poisonous:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "blooming_period:") {
+                            bloomingPeriod = line.replacingOccurrences(of: "blooming_period:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "native_region:") {
+                            nativeRegion = line.replacingOccurrences(of: "native_region:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "symbolism:") {
+                            symbolism = line.replacingOccurrences(of: "symbolism:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "gift_to:") {
+                            giftTo = line.replacingOccurrences(of: "gift_to:", with: "").trimmingCharacters(in: .whitespaces)
+                        } else if line.lowercased().starts(with: "story:") {
+                            story = line.replacingOccurrences(of: "story:", with: "").trimmingCharacters(in: .whitespaces)
+                        }
+                    }
                 }
+            } else {
+                identificationFailed = true
             }
         } catch {
             print("Error: \(error)")
             identificationFailed = true
         }
-        
+
         isAnalyzing = false
     }
 }
